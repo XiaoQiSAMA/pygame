@@ -20,7 +20,7 @@ def run_game():
     bullets = Group()
 
     #设置背景色
-    bg_color = (230, 230, 230)
+    bg_color = (230, 230 , 230)
 
     #开始游戏的主循环
     while True:
