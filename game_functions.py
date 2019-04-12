@@ -4,6 +4,7 @@ import pygame
 from bullet import Bullet
 from alien import Alien
 from random import randint
+from time import sleep
 
 def update_screen(ai_settings, screen, ship, aliens, bullets):
     #更新屏幕上的图像，并切换到新屏幕
@@ -14,7 +15,7 @@ def update_screen(ai_settings, screen, ship, aliens, bullets):
         bullet.draw_bullet()
     ship.blitme()
     aliens.draw(screen)
-    
+
     #让最近绘制的屏幕可见
     pygame.display.flip()
 
@@ -57,7 +58,7 @@ def check_keyup_events(event, ship):
     elif event.key == pygame.K_DOWN:
         ship.moving_down = False
 
-def update_bullets(bullets):
+def update_bullets(ai_settings, screen, ship, aliens, bullets):
     #对子弹的处理
     ##刷新子弹位置
     bullets.update( )
@@ -66,6 +67,19 @@ def update_bullets(bullets):
     for bullet in bullets.copy():
         if bullet.rect.bottom <= 0:
             bullets.remove(bullet)
+
+    check_bullet_alien_collision(ai_settings, screen, ship, aliens, bullets)
+
+def check_bullet_alien_collision(ai_settings, screen, ship, aliens, bullets):
+    #响应子弹和外星人的碰撞
+    ##检查是否有子弹击中外星人
+    ##如果是，将删除相应的子弹和外星人
+    collisions = pygame.sprite.groupcollide(bullets, aliens, True, True)
+    
+    if len(aliens) == 0:
+        #删除现有的子弹并创建一群新的外星人
+        bullets.empty()
+        create_fleet(ai_settings, screen, ship, aliens)
 
 def fire_bullet(ai_settings, screen, ship, bullets):
     if len(bullets) < ai_settings.bullet_allowed:
@@ -93,18 +107,65 @@ def get_number_aliens_x(ai_settings, alien_width):
 def get_number_rows(ai_settings, ship_heigth, alien_height):
     #计算屏幕可容纳多少行外星人
     available_space_y = (ai_settings.screen_height - (3 * alien_height) - ship_heigth)
-    number_rows = int(available_space_y / (2 * alien_height))
+    number_rows = int(available_space_y / (3 * alien_height))
     return number_rows
 
 def create_alien(ai_settings, screen, aliens, alien_number, row_number):
     #创建外星人
     alien = Alien(ai_settings, screen)
     alien_width = alien.rect.width 
-    alien.x = randint(0, 1200)
+    alien.x = randint(0, 700)
     alien.rect.y = randint(0, alien.rect.height + 2 * alien.rect.height * row_number)
     alien.rect.x = alien.x
     aliens.add(alien)
 
-def update_aliens(aliens):
-    #更新外星人位置
+def update_aliens(ai_settings, stats, screen, ship, aliens, bullets):
+    #检查外星人是否位于屏幕边缘，并更新整理外星人位置 
+    check_fleet_edges(ai_settings, aliens)
     aliens.update()
+
+    #检测飞船和外星人之间的碰撞
+    if pygame.sprite.spritecollideany(ship, aliens):
+        ship_hit(ai_settings, stats, screen, ship, aliens, bullets)
+        
+    check_aliens_bottom(ai_settings, stats, screen, ship, aliens, bullets)
+
+def check_fleet_edges(ai_settings, aliens):
+    #外星人到达边缘时采取的措施
+    for alien in aliens.sprites():
+        if alien.check_edges():
+            change_fleet_direction(ai_settings, aliens)
+            break
+
+def change_fleet_direction(ai_settings, aliens):
+    for alien in aliens.sprites():
+        alien.rect.y += ai_settings.fleet_drop_speed
+    ai_settings.fleet_direction *= -1
+  
+def ship_hit(ai_settings, stats, screen, ship, aliens, bullets):
+    #响应被外星人撞到的飞船
+    if stats.ships_left > 0:
+        stats.ships_left -= 1
+
+        #清空外星人和子弹列表
+        aliens.empty()
+        bullets.empty()
+
+        #创建一群新的外星人，并将飞船放在屏幕底部中央
+        create_fleet(ai_settings, screen, ship, aliens)
+        ship.center_ship()
+
+        #暂停
+        sleep(0.5)
+
+    else:
+        stats.game_active = False
+
+def check_aliens_bottom(ai_settings, stats, screen, ship, aliens, bullets):
+    #检查是否有外星人到达了屏幕底端
+    screen_rect = screen.get_rect()
+    for alien in aliens.sprites():
+        if alien.rect.bottom >= screen_rect.bottom:
+            #处理
+            ship_hit(ai_settings, stats, screen, ship, aliens, bullets)
+            break

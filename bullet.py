@@ -11,7 +11,7 @@ class Bullet(Sprite):
         self.screen = screen
 
         #在（0,0）处创建一个表示子弹的矩形，再设置正确位置
-        self.rect = pygame.Rect(0, 0, 3, 15)
+        self.rect = pygame.Rect(0, 0, 5, 15)
         self.rect.centerx = ship.rect.centerx
         self.rect.top = ship.rect.top
 
